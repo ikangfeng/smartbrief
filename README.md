@@ -2,6 +2,52 @@
 
 > 第 27 节（全栈评测与最终交付）终结版本（v27.0）
 
+输入一个市场调研主题，约 1–2 分钟自动产出结构化报告：多章节、带 [n] 行内引用与参考资料、ECharts 数据图表、术语口径准确，全程过程可回溯。
+
+## 系统架构
+
+```mermaid
+flowchart LR
+    U[用户提交调研主题] --> P[Planner 规划器<br/>拆解研究计划 + 长期记忆 Few-shot]
+    P --> G1{人工闸门① 计划审批}
+    G1 -->|批准| S[Scheduler 调度器<br/>依赖感知 · 并发派发]
+    S --> R[ReAct 研究员 ×N<br/>Thought→Action→Observation<br/>web_search / fetch 抓正文]
+    S --> W[ReAct 撰写员 ×N<br/>RAG 术语与国标材料注入<br/>行内引用 + ECharts 图表]
+    R --> V[Reviewer 审核]
+    W --> V
+    V -->|不通过| RW[Rewriter 返工 · ≤3 轮循环]
+    RW --> V
+    V -->|通过| G2{人工闸门② 报告终审}
+    G2 --> F[最终报告 · 引用对齐 · 图表渲染]
+
+    R <-.MCP 协议.-> T[(MCP 工具服务<br/>搜索降级链 Tavily→Bing→mock)]
+    W <-.-> K[(RAG 知识库<br/>术语表 · 国标 PDF · 行业模板)]
+    P <-.-> M[(双记忆<br/>短期 Checkpointer 断点续跑<br/>长期 历史报告检索)]
+
+    subgraph SHIELD[安全防护层]
+      SEC[注入防护边界<br/>直接注入 + 间接注入双用例回归]
+    end
+    subgraph OBS[可观测与评测]
+      TR[瀑布 Span 追踪 · 逐 token 成本]
+      EV[评测 Harness<br/>五维 Judge 模型解耦<br/>结构断言 + 预算门禁]
+    end
+    S -.全程留痕.-> OBS
+```
+
+**五大工程闭环**：双层注入防护（直接 + 间接用例回归）｜三层质量信号（LLM 评审 + 结构断言 + 预算红线）｜Skill 方法论沉淀复用（报告一键沉淀技能 → 撰写自动挂载）｜全链路降级韧性（搜索/抓取/超时/LLM 失败均有预案，单点失败任务不死）｜逐 span 成本可观测（单篇报告 ≈ $0.005，逐 token 计量）。
+
+## 效果截图
+
+| 报告页（行内引用 [n] + ECharts 图表） | 评测中心（回归门禁 + 防护用例） |
+|---|---|
+| ![报告页](docs/screenshots/report_full.png) | ![评测中心](docs/screenshots/evaluation.png) |
+
+| 任务提交 | 技能中心（试运行 / 沉淀技能管理） |
+|---|---|
+| ![任务提交](docs/screenshots/home.png) | ![技能中心](docs/screenshots/skills.png) |
+
+> 更完整的功能级盘点见 [docs/FEATURES.md](docs/FEATURES.md)。
+
 本版本在 v26（RAG 知识库 + 智能体记忆）基础上，完成**自动化评测体系**与**全栈最终联调**：标准用例批量执行 + 五维指标（成功率 / 平均耗时 / P95 / ReAct 循环次数 / 关键词覆盖率 / 记忆命中率）+ 雷达图与 Markdown 评测报告，新增「评测中心」「报告中心」「报告展示」页面，提供一键启动脚本，项目完结。
 
 **第 27 节核心能力**：
